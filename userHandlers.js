@@ -75,41 +75,72 @@ const postUser = (req, res) => {
 
 const updateUser = (req, res) => {
   const id = parseInt(req.params.id);
-  const { firstname, lastname, email, city, language, hashedPassword } = req.body;
+  if (id === req.payload.sub)
+  {
+    const { firstname, lastname, email, city, language, hashedPassword } = req.body;
 
-  database
-    .query(
-      "update users set firstname = ?, lastname = ?, email = ?, city = ?, language = ?, hashedPassword = ? where id = ?",
-      [firstname, lastname, email, city, language, hashedPassword, id]
-    )
-    .then(([result]) => {
-      if (result.affectedRows === 0) {
-        res.status(404).send("Not Found");
-      } else {
-        res.sendStatus(204);
-      }
-    })
-    .catch((err) => {
-      console.error(err);
-      res.status(500).send("Error editing the user");
-    });
+    database
+      .query(
+        "update users set firstname = ?, lastname = ?, email = ?, city = ?, language = ?, hashedPassword = ? where id = ?",
+        [firstname, lastname, email, city, language, hashedPassword, id]
+      )
+      .then(([result]) => {
+        if (result.affectedRows === 0) {
+          res.status(404).send("Not Found");
+        } else {
+          res.sendStatus(204);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).send("Error editing the user");
+      });
+  }
+  else res.sendStatus(403);
 };
 
 const deleteUser = (req, res) => {
   const id = parseInt(req.params.id);
 
+  if (id === req.payload.sub)
+  {
+    database
+      .query("delete from users where id = ?", [id])
+      .then(([result]) => {
+        if (result.affectedRows === 0) {
+          res.status(404).send("Not Found");
+        } else {
+          res.sendStatus(204);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        res.status(500).send("Error deleting the user");
+      });
+  }
+  else res.sendStatus(403);
+};
+
+// Login
+const getUserByEmailWithPasswordAndPassToNext = (req, res, next) =>
+{
+  const { email } = req.body;
+
   database
-    .query("delete from users where id = ?", [id])
-    .then(([result]) => {
-      if (result.affectedRows === 0) {
-        res.status(404).send("Not Found");
-      } else {
-        res.sendStatus(204);
+    .query("SELECT * FROM users WHERE email = ?", [email])
+    .then(([result]) =>
+    {
+      if (typeof result[0] !== 'undefined')
+      {
+        req.user = result[0];
+        next();
       }
+      else res.sendStatus(401);
     })
-    .catch((err) => {
+    .catch(err =>
+    {
       console.error(err);
-      res.status(500).send("Error deleting the user");
+      res.status(500).send('Error logging in');
     });
 };
 
@@ -119,4 +150,5 @@ module.exports = {
   postUser,
   updateUser,
   deleteUser,
+  getUserByEmailWithPasswordAndPassToNext
 };
